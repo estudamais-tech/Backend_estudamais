@@ -125,6 +125,7 @@ No futuro, novas APIs serão adicionadas, incluindo gerenciamento de usuários, 
 ---
 
 ## 🤝 Contribuições
+Para contribuir, por favor, crie uma nova branch com o nome do seu usuário, seguindo o formato feat/seu-nome (ex: feat/maria-silva ou feat/joao-dev).
 
 Pull requests são bem-vindos! 💜
 
