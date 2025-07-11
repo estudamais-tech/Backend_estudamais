@@ -23,7 +23,7 @@ Este backend será expandido no futuro com novas APIs e funcionalidades para apo
 
 ## 📥 Clonar o repositório
 
-git clone https://github.com/estudamais-tech/Backend_estudamais.git
+git clone https://github.com/estudamais-tech/Backend_estudamais.git  
 cd Backend_estudamais
 
 ---
