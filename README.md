@@ -3,13 +3,13 @@
 
 Este é o backend **inicial** do projeto **EstudaMais**, criado para gerenciar a autenticação de usuários via GitHub utilizando OAuth, JWT e cookies HttpOnly.  
 
-⚡ Este backend será expandido no futuro com novas APIs e funcionalidades para apoiar todo o ecossistema do EstudaMais.
+Este backend será expandido no futuro com novas APIs e funcionalidades para apoiar todo o ecossistema do EstudaMais.
 
 ✅ Feito com **Express**, **JWT**, **node-fetch**, **cookie-parser** e **dotenv**.
 
 ---
 
-## 🚀 Tecnologias utilizadas
+##  Tecnologias utilizadas
 
 - Node.js
 - Express
