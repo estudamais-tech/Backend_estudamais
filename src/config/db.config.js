@@ -1,26 +1,62 @@
+// src/config/db.config.js
 const mysql = require('mysql2/promise');
 
 let pool;
+const DB_NAME = process.env.DB_DATABASE; // Ensure this matches your .env key
 
 async function connectToDatabase() {
     try {
-        pool = mysql.createPool({
+        // First, connect to MySQL server WITHOUT specifying a database.
+        // This is necessary to be able to create the database if it doesn't exist.
+        const tempPool = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME,
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0
         });
-        const connection = await pool.getConnection();
-        console.log('[BACKEND] Conectado ao banco de dados MySQL com sucesso!');
-        connection.release();
+
+        let connection;
+        try {
+            connection = await tempPool.getConnection();
+            console.log('[BACKEND] Conectado ao servidor MySQL com sucesso!');
+
+            // Try to create the database if it doesn't exist
+            await connection.execute(`CREATE DATABASE IF NOT EXISTS ${DB_NAME};`);
+            console.log(`[BACKEND] Banco de dados "${DB_NAME}" verificado/criado com sucesso.`);
+
+        } catch (error) {
+            console.error('[BACKEND] Erro ao verificar/criar banco de dados:', error.message);
+            throw error; // Propagate the error if DB creation fails
+        } finally {
+            if (connection) {
+                connection.release();
+            }
+            await tempPool.end(); // Close the temporary pool
+        }
+
+        // Now, establish the main application pool, connecting TO the specific database
+        pool = mysql.createPool({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: DB_NAME, // Connect to the specific database
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
+
+        // Test the connection to the specific database
+        const finalConnection = await pool.getConnection();
+        console.log(`[BACKEND] Conectado ao banco de dados "${DB_NAME}" para operações.`);
+        finalConnection.release();
+        
         return pool;
+
     } catch (error) {
-        console.error('[BACKEND] Erro ao conectar ao MySQL:', error.message);
+        console.error('[BACKEND] Erro fatal ao conectar ou configurar o banco de dados MySQL:', error.message);
         console.error('[BACKEND] Verifique se o MySQL está rodando e as credenciais no .env estão corretas.');
-        console.error('[BACKEND] Certifique-se de que o banco de dados especificado em DB_NAME no seu .env existe.');
         process.exit(1);
     }
 }
@@ -43,6 +79,7 @@ async function createUsersTable() {
             areasOfInterest JSON,
             totalEconomy DECIMAL(10, 2) DEFAULT 0.00,
             redeemedBenefits JSON,
+            onboarding_complete BOOLEAN DEFAULT FALSE, -- <--- CAMPO ADICIONADO AQUI
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         );
@@ -108,7 +145,7 @@ async function createUserTracksTable() {
 module.exports = {
     connectToDatabase,
     createUsersTable,
-    createTracksTable, 
-    createUserTracksTable, 
+    createTracksTable,
+    createUserTracksTable,
     getPool: () => pool
 };

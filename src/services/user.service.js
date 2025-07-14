@@ -1,3 +1,4 @@
+// src/services/user.service.js
 const userRepository = require('../repositories/user.repository');
 
 
@@ -37,7 +38,8 @@ async function getAllStudents() {
 
 // NOVO: Serviço para salvar os dados de onboarding do estudante
 async function saveOnboardingData(userId, data) {
-    await userRepository.updateOnboardingData(userId, data);
+    // AJUSTE CRÍTICO AQUI: Chamar saveOnboardingData do repositório
+    await userRepository.saveOnboardingData(userId, data);
 }
 
 // NOVO: Serviço para obter os dados da dashboard do estudante
@@ -70,7 +72,7 @@ module.exports = {
     getStudentsWithActiveBenefitsCount,
     getPendingStudentsCount,
     getAllStudents,
-    saveOnboardingData,
+    saveOnboardingData, // EXPORTANDO O SERVIÇO COM O NOME CORRETO
     getStudentDashboardData,
     updateBenefitStatus,
     unlockReward, 

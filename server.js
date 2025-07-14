@@ -1,56 +1,49 @@
+require('dotenv').config(); // Carrega as variáveis de ambiente do .env
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const cookieParser = require('cookie-parser');
-
-dotenv.config();
-
-// Importa as novas funções de criação de tabela e o serviço de trilhas
-const { connectToDatabase, createUsersTable, createTracksTable, createUserTracksTable, getPool } = require('./src/config/db.config');
-// Removi a importação de trackService pois não será usado para seed aqui.
-// Se você usa trackService em outras partes do server.js (fora do seed), mantenha a importação.
-// const trackService = require('./src/services/track.service'); 
-
-const JWT_SECRET_APP = process.env.JWT_SECRET;
-if (process.env.NODE_ENV !== 'production' && !JWT_SECRET_APP) {
-    console.warn('AVISO: JWT_SECRET não definido no .env do backend. Usando chave padrão para desenvolvimento. NÃO FAÇA ISSO EM PRODUÇÃO!');
-    process.env.JWT_SECRET_APP = 'sua_super_secreta_chave_jwt_padrao_dev';
-} else if (JWT_SECRET_APP) {
-    process.env.JWT_SECRET_APP = JWT_SECRET_APP;
-} else {
-    console.error('ERRO CRÍTICO: JWT_SECRET não pode ser definido.');
-    process.exit(1);
-}
-
-const apiRoutes = require('./src/routes'); // Este é o seu index.js
+const cookieParser = require('cookie-parser'); // Importado e essencial para ler cookies
+const { connectToDatabase, createUsersTable, createTracksTable, createUserTracksTable } = require('./src/config/db.config');
+const routes = require('./src/routes'); // Importa o arquivo de rotas consolidado
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Middlewares
 app.use(cors({
-    origin: 'http://localhost:8080',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'],
-    credentials: true
+    origin: process.env.FRONTEND_URL || 'http://localhost:8080', // Permite requisições do seu frontend
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Essencial para enviar e receber cookies
 }));
+app.use(express.json()); // Permite que o Express parseie o corpo das requisições como JSON
+app.use(cookieParser()); // Habilita o parsing de cookies - CRÍTICO AQUI!
 
-app.use(express.json());
-app.use(cookieParser());
+// Rotas da API
+app.use('/', routes); // Usa o roteador principal que já inclui o prefixo /api
 
-app.use('/', apiRoutes);
+// Rota de teste simples
+app.get('/', (req, res) => {
+    res.send('API is running...');
+});
 
+// Inicialização do servidor
 async function startServer() {
-    const dbPool = await connectToDatabase();
-    await createUsersTable();
-    await createTracksTable(); // Garante que a tabela 'tracks' seja criada (vazia)
-    await createUserTracksTable(); // Garante que a tabela 'user_tracks' seja criada
-    // Removida a chamada para trackService.seedTracks();
-    // Agora o backend não vai mais popular a tabela 'tracks' automaticamente.
+    try {
+        await connectToDatabase();
+        await createUsersTable(); // Garante que a tabela de usuários existe
+        await createTracksTable(); // Garante que a tabela de trilhas existe
+        await createUserTracksTable(); // Garante que a tabela de user_tracks existe
 
-    app.listen(PORT, () => {
-        console.log(`[BACKEND] Servidor rodando em http://localhost:${PORT}`);
-        console.log(`[BACKEND] Certifique-se de que seu frontend está configurado para usar esta URL: http://localhost:${PORT}/api`);
-    });
+        app.listen(PORT, () => {
+            console.log(`[BACKEND] Servidor rodando na porta ${PORT}`);
+            console.log(`[BACKEND] Acesso via navegador: http://localhost:${PORT}`);
+            console.log(`[BACKEND] Rotas da API disponíveis em http://localhost:${PORT}/api/...`);
+        });
+    } catch (error) {
+        console.error('[BACKEND] Falha ao iniciar o servidor:', error);
+        process.exit(1);
+    }
 }
 
 startServer();
