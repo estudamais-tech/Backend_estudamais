@@ -1,6 +1,7 @@
 const trackRepository = require('../repositories/track.repository');
 const userRepository = require('../repositories/user.repository'); // Assumindo que este arquivo existe e tem unlockUserReward
 const { getPool } = require('../config/db.config');
+const statsService = require('./stats.service'); 
 
 async function getTracks(userId) {
     try {
@@ -18,7 +19,7 @@ async function startTrackAndUnlockReward(userId, trackId, rewardAmount) {
         // Marca a trilha como 'in-progress' ou a atualiza se já existir
         await trackRepository.addUserTrack(userId, trackId);
         console.log(`[TRACK SERVICE] User ${userId} added/started track ${trackId}.`);
-
+      await statsService.incrementUnlockedValue(rewardAmount);
         // Desbloqueia a recompensa se um valor for fornecido
         if (rewardAmount !== undefined && rewardAmount !== null) {
             // userRepository.unlockUserReward deve lidar com a lógica de somar a recompensa ao totalEconomy

@@ -3,7 +3,7 @@ require('dotenv').config(); // Carrega as variáveis de ambiente do .env
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser'); // Importado e essencial para ler cookies
-const { connectToDatabase, createUsersTable, createTracksTable, createUserTracksTable } = require('./src/config/db.config');
+const { connectToDatabase, createUsersTable, createTracksTable, createUserTracksTable, createGlobalStatsTable } = require('./src/config/db.config');
 const routes = require('./src/routes'); // Importa o arquivo de rotas consolidado
 
 const app = express();
@@ -34,7 +34,7 @@ async function startServer() {
         await createUsersTable(); // Garante que a tabela de usuários existe
         await createTracksTable(); // Garante que a tabela de trilhas existe
         await createUserTracksTable(); // Garante que a tabela de user_tracks existe
-
+         await createGlobalStatsTable(); 
         app.listen(PORT, () => {
             console.log(`[BACKEND] Servidor rodando na porta ${PORT}`);
             console.log(`[BACKEND] Acesso via navegador: http://localhost:${PORT}`);
@@ -47,3 +47,4 @@ async function startServer() {
 }
 
 startServer();
+// correto 

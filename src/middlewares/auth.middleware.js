@@ -24,10 +24,4 @@ function authenticateToken(req, res, next) {
     }
 }
 
-// AJUSTE: Exporta diretamente a função authenticateToken.
-// Isso significa que nos seus arquivos de rota (ex: user.routes.js, track.routes.js),
-// você deve importar esta função assim:
-// const authenticateToken = require('../middleware/auth.middleware');
-// E usá-la diretamente:
-// router.get('/sua-rota', authenticateToken, seuController.suaFuncao);
 module.exports = authenticateToken;

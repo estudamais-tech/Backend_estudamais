@@ -1,10 +1,12 @@
 const { getPool } = require('../config/db.config');
+const statsService = require('../services/stats.service'); 
 
 async function upsertUser(githubUser) {
     const pool = getPool();
     if (!pool) {
         console.error('[USER REPOSITORY] Database pool is not available during upsertUser.');
         throw new Error('Database connection not established.');
+        // A lógica de negócio não deve estar aqui
     }
 
     const { id, login, name, email, avatar_url } = githubUser;
@@ -25,6 +27,11 @@ async function upsertUser(githubUser) {
         if (result.insertId) {
             userId = result.insertId;
             console.log(`[USER REPOSITORY] New user inserted with ID: ${userId}`);
+            
+            // ---> CORREÇÃO E INTEGRAÇÃO AQUI <---
+            // Chame o serviço de stats apenas quando um novo usuário for inserido.
+            await statsService.incrementUserCount();
+
         } else {
             const [rows] = await pool.execute(
                 `SELECT id FROM usuarios WHERE github_id = ?;`,

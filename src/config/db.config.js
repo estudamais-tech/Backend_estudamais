@@ -141,11 +141,36 @@ async function createUserTracksTable() {
         process.exit(1);
     }
 }
+// NOVO: Função para criar a tabela de estatísticas globais
+async function createGlobalStatsTable() {
+    const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS global_stats (
+            id INT PRIMARY KEY DEFAULT 1, -- Usamos 'id' fixo para ter sempre uma única linha de stats
+            total_users BIGINT DEFAULT 0,
+            total_unlocked_value DECIMAL(15, 2) DEFAULT 0.00,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT id_check CHECK (id = 1) -- Garante que apenas o id 1 pode ser inserido
+        );
+    `;
+    const insertInitialRowQuery = `
+        INSERT IGNORE INTO global_stats (id) VALUES (1);
+    `;
+    try {
+        await pool.execute(createTableQuery);
+        await pool.execute(insertInitialRowQuery); 
+        console.log('[BACKEND] Tabela "global_stats" verificada/criada com sucesso.');
+    } catch (error) {
+        console.error('[BACKEND] Erro ao criar tabela "global_stats":', error.message);
+        process.exit(1);
+    }
+}
 
 module.exports = {
     connectToDatabase,
     createUsersTable,
     createTracksTable,
     createUserTracksTable,
+     createGlobalStatsTable,
     getPool: () => pool
 };
+// corre
