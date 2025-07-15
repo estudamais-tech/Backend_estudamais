@@ -1,4 +1,4 @@
-const userService = require('../services/user.service');
+const userService = require('../services/user.service'); // Assumindo que este é o serviço de backend
 
 async function getUsersCountController(req, res) {
     try {
@@ -83,12 +83,16 @@ async function saveOnboardingDataController(req, res) {
 async function getStudentDashboardDataController(req, res) {
     try {
         const userId = req.user.id; 
+        console.log(`[USER CONTROLLER] getStudentDashboardDataController: User ID from req.user.id: ${userId}`); // NOVO LOG
         if (!userId) {
             return res.status(401).json({ message: 'Usuário não autenticado.' });
         }
 
-        const studentData = await userService.getStudentDashboardData(userId);
+        // Assumindo que userService.getStudentDashboardData é uma função do SERVIÇO DE BACKEND
+        const studentData = await userService.getStudentDashboardData(userId); 
+        
         if (!studentData) {
+            console.log(`[USER CONTROLLER] getStudentDashboardDataController: No student data found for ID: ${userId}. Returning 404.`); // NOVO LOG
             return res.status(404).json({ message: 'Dados do estudante não encontrados.' });
         }
 
@@ -125,7 +129,7 @@ module.exports = {
     getStudentsWithActiveBenefitsCountController,
     getPendingStudentsCountController,
     getAllStudentsController,
-    saveOnboardingDataController, // Exportando com o nome correto
-    getStudentDashboardDataController, 
-    updateBenefitStatusController, 
+    saveOnboardingDataController,
+    getStudentDashboardDataController,
+    updateBenefitStatusController,
 };

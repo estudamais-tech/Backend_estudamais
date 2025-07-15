@@ -6,7 +6,6 @@ async function upsertUser(githubUser) {
     if (!pool) {
         console.error('[USER REPOSITORY] Database pool is not available during upsertUser.');
         throw new Error('Database connection not established.');
-        // A lógica de negócio não deve estar aqui
     }
 
     const { id, login, name, email, avatar_url } = githubUser;
@@ -28,13 +27,12 @@ async function upsertUser(githubUser) {
             userId = result.insertId;
             console.log(`[USER REPOSITORY] New user inserted with ID: ${userId}`);
             
-            // ---> CORREÇÃO E INTEGRAÇÃO AQUI <---
             // Chame o serviço de stats apenas quando um novo usuário for inserido.
             await statsService.incrementUserCount();
 
         } else {
             const [rows] = await pool.execute(
-                `SELECT id FROM usuarios WHERE github_id = ?;`,
+                `SELECT id FROM usuarios WHERE github_id = ?;`, 
                 [id]
             );
             if (rows.length > 0) {
@@ -67,7 +65,7 @@ async function getTotalUsersCount() {
         const [rows] = await pool.execute('SELECT COUNT(*) AS count FROM usuarios;');
         return rows[0].count;
     } catch (error) {
-        console.error('[USER REPOSITORY] Error fetching total users count:', error.message);
+        console.error('[USER REPOSITORY] Error fetching total usuarios count:', error.message);
         throw error;
     }
 }
@@ -81,7 +79,7 @@ async function getGithubUsersCount() {
         const [rows] = await pool.execute("SELECT COUNT(*) AS count FROM usuarios WHERE github_status = 'ativo';");
         return rows[0].count;
     } catch (error) {
-        console.error('[USER REPOSITORY] Error fetching GitHub users count:', error.message);
+        console.error('[USER REPOSITORY] Error fetching GitHub usuarios count:', error.message);
         throw error;
     }
 }
@@ -94,7 +92,8 @@ async function getStudentsWithActiveBenefitsCount() {
     try {
         const [rows] = await pool.execute("SELECT COUNT(*) AS count FROM usuarios WHERE benefits_activated > 0;");
         return rows[0].count;
-    } catch (error) {
+    }
+    catch (error) {
         console.error('[USER REPOSITORY] Error fetching active benefits count:', error.message);
         throw error;
     }
@@ -120,14 +119,33 @@ async function getAllStudents() {
         throw new Error('Database connection not established.');
     }
     try {
-        const [rows] = await pool.execute('SELECT id, github_login, name, email, github_status, benefits_activated, course, currentSemester, totalSemesters, areasOfInterest, totalEconomy, redeemedBenefits, onboarding_complete FROM usuarios;');
+        const [rows] = await pool.execute('SELECT id, github_login, name, email, avatar_url, github_status, benefits_activated, course, currentSemester, totalSemesters, areasOfInterest, totalEconomy, redeemedBenefits, onboarding_complete FROM usuarios;'); 
         
-        // Mapear e garantir que áreas e benefícios são arrays, sem JSON.parse
         const students = rows.map(student => {
+            let parsedAreasOfInterest = [];
+            if (student.areasOfInterest) {
+                try {
+                    parsedAreasOfInterest = JSON.parse(student.areasOfInterest);
+                } catch (e) {
+                    console.error(`[USER REPOSITORY] Erro ao fazer parse de areasOfInterest para o usuário ${student.id}:`, e.message, 'Valor:', student.areasOfInterest);
+                    parsedAreasOfInterest = Array.isArray(student.areasOfInterest) ? student.areasOfInterest : (typeof student.areasOfInterest === 'string' ? [student.areasOfInterest] : []);
+                }
+            }
+
+            let parsedRedeemedBenefits = [];
+            if (student.redeemedBenefits) {
+                try {
+                    parsedRedeemedBenefits = JSON.parse(student.redeemedBenefits);
+                } catch (e) {
+                    console.error(`[USER REPOSITORY] Erro ao fazer parse de redeemedBenefits para o usuário ${student.id}:`, e.message, 'Valor:', student.redeemedBenefits);
+                    parsedRedeemedBenefits = [];
+                }
+            }
+
             return {
                 ...student,
-                areasOfInterest: student.areasOfInterest || [], // Garante que é um array, mesmo se vier null
-                redeemedBenefits: student.redeemedBenefits || [], // Garante que é um array, mesmo se vier null
+                areasOfInterest: parsedAreasOfInterest,
+                redeemedBenefits: parsedRedeemedBenefits,
             };
         });
         return students;
@@ -144,7 +162,9 @@ async function saveOnboardingData(userId, data) {
     }
     const { course, currentSemester, totalSemesters, areasOfInterest } = data;
     try {
-        // Mantenha o JSON.stringify AQUI para salvar no DB como string JSON
+        // GARANTA QUE areasOfInterest É SEMPRE UMA STRING JSON VÁLIDA DE UM ARRAY
+        const areasOfInterestJson = JSON.stringify(areasOfInterest || []); // Garante que é um array vazio se undefined/null
+        
         await pool.execute(
             `UPDATE usuarios SET
              course = ?,
@@ -154,7 +174,7 @@ async function saveOnboardingData(userId, data) {
              onboarding_complete = TRUE,
              updated_at = CURRENT_TIMESTAMP
              WHERE id = ?;`,
-            [course, currentSemester, totalSemesters, JSON.stringify(areasOfInterest), userId] 
+            [course, currentSemester, totalSemesters, areasOfInterestJson, userId] 
         );
         console.log(`[USER REPOSITORY] Dados de onboarding salvos para o usuário ${userId}.`);
     } catch (error) {
@@ -169,16 +189,39 @@ async function getStudentById(userId) {
         throw new Error('Database connection not established.');
     }
     try {
-        const [rows] = await pool.execute('SELECT id, github_login, name, email, github_status, benefits_activated, course, currentSemester, totalSemesters, areasOfInterest, totalEconomy, redeemedBenefits, onboarding_complete FROM usuarios WHERE id = ?;', [userId]);
+        console.log(`[USER REPOSITORY] getStudentById: Attempting to fetch user with ID: ${userId}`); // NOVO LOG
+        const [rows] = await pool.execute('SELECT id, github_login, name, email, avatar_url, github_status, benefits_activated, course, currentSemester, totalSemesters, areasOfInterest, totalEconomy, redeemedBenefits, onboarding_complete FROM usuarios WHERE id = ?;', [userId]);
         if (rows.length > 0) {
             const student = rows[0];
+            console.log(`[USER REPOSITORY] getStudentById: User found for ID ${userId}:`, student); // NOVO LOG
             
-            // REMOVA JSON.parse(). Apenas garanta que seja um array.
-            student.areasOfInterest = student.areasOfInterest || []; 
-            student.redeemedBenefits = student.redeemedBenefits || [];
+            // GARANTE QUE AREASOFINTEREST É PARSEADO CORRETAMENTE E TRATA ERROS DE PARSEAMENTO
+            let parsedAreasOfInterest = [];
+            if (student.areasOfInterest) {
+                try {
+                    parsedAreasOfInterest = JSON.parse(student.areasOfInterest);
+                } catch (e) {
+                    console.error(`[USER REPOSITORY] Erro ao fazer parse de areasOfInterest para o usuário ${userId}:`, e.message, 'Valor:', student.areasOfInterest);
+                    parsedAreasOfInterest = Array.isArray(student.areasOfInterest) ? student.areasOfInterest : (typeof student.areasOfInterest === 'string' ? [student.areasOfInterest] : []);
+                }
+            }
+            student.areasOfInterest = parsedAreasOfInterest;
+
+            // TRATAMENTO SEMELHANTE PARA redeemedBenefits
+            let parsedRedeemedBenefits = [];
+            if (student.redeemedBenefits) {
+                try {
+                    parsedRedeemedBenefits = JSON.parse(student.redeemedBenefits);
+                } catch (e) {
+                    console.error(`[USER REPOSITORY] Erro ao fazer parse de redeemedBenefits para o usuário ${userId}:`, e.message, 'Valor:', student.redeemedBenefits);
+                    parsedRedeemedBenefits = [];
+                }
+            }
+            student.redeemedBenefits = parsedRedeemedBenefits;
 
             return student;
         }
+        console.log(`[USER REPOSITORY] getStudentById: No user found for ID: ${userId}`); // NOVO LOG
         return null;
     } catch (error) {
         console.error(`[USER REPOSITORY] Error fetching student by ID ${userId}:`, error.message);
@@ -250,12 +293,11 @@ async function updateStudentBenefitStatus(userId, productId, isRedeemed, monthly
     }
 }
 
-async function unlockUserReward(userId, trackId, amount, connection = null) { // <--- ADICIONE connection = null
-    const conn = connection || await getPool().getConnection(); // <--- ATUALIZE AQUI
+async function unlockUserReward(userId, trackId, amount, connection = null) {
+    const conn = connection || await getPool().getConnection();
     try {
-        // Find the user's current total economy
-        const [rows] = await conn.execute( // <--- ATUALIZE AQUI: usar 'conn'
-            `SELECT totalEconomy, benefits_activated FROM usuarios WHERE id = ?;`, // Colunas camelCase do seu DB
+        const [rows] = await conn.execute(
+            `SELECT totalEconomy, benefits_activated FROM usuarios WHERE id = ?;`,
             [userId]
         );
 
@@ -267,13 +309,9 @@ async function unlockUserReward(userId, trackId, amount, connection = null) { //
         let currentBenefitsActivated = parseInt(rows[0].benefits_activated || 0);
 
         const newTotalEconomy = currentTotalEconomy + amount;
-        // Não incrementamos benefits_activated aqui pois a trilha não é um "benefício ativado"
-        // no mesmo sentido que os produtos de benefits_activated.
-        // Se cada trilha completa CONTA como 1 "benefício ativado", então a linha abaixo está correta.
-        // Caso contrário, remova ou ajuste a linha abaixo.
-        const newBenefitsActivated = currentBenefitsActivated + 1; // Ajuste se esta lógica não se aplica a 'tracks'
+        const newBenefitsActivated = currentBenefitsActivated + 1;
 
-        await conn.execute( // <--- ATUALIZE AQUI: usar 'conn'
+        await conn.execute(
             `UPDATE usuarios SET
              totalEconomy = ?,
              benefits_activated = ?,
@@ -282,28 +320,23 @@ async function unlockUserReward(userId, trackId, amount, connection = null) { //
             [newTotalEconomy, newBenefitsActivated, userId]
         );
 
-        // NÂO FAÇA connection.commit() ou connection.rollback() AQUI se connection foi passado!
-        // Quem chamou (track.service) é responsável pela transação.
-
         console.log(`[USER REPOSITORY] User ${userId} unlocked reward of R$${amount.toFixed(2)} for track ${trackId}. New totalEconomy: R$${newTotalEconomy.toFixed(2)}`);
         return { newTotalEconomy };
     } catch (error) {
         console.error(`[USER REPOSITORY] Error unlocking reward for user ${userId} on track ${trackId}:`, error.message);
-        // NÂO FAÇA connection.rollback() AQUI se connection foi passado!
         throw error;
     } finally {
-        if (!connection && conn) { // <--- ATUALIZE AQUI: Só libera se a conexão foi obtida NESTA função
+        if (!connection && conn) {
             conn.release();
         }
     }
 }
 
-// <--- ADICIONE ESTA NOVA FUNÇÃO ABAIXO
 async function deductUserEconomy(userId, amountToDeduct, connection = null) {
     const conn = connection || await getPool().getConnection();
     try {
         const [userRows] = await conn.execute(
-            `SELECT totalEconomy FROM usuarios WHERE id = ?;`, // Coluna camelCase do seu DB
+            `SELECT totalEconomy FROM usuarios WHERE id = ?;`,
             [userId]
         );
 
@@ -313,22 +346,10 @@ async function deductUserEconomy(userId, amountToDeduct, connection = null) {
 
         const currentEconomy = parseFloat(userRows[0].totalEconomy || 0);
         const newEconomy = currentEconomy - parseFloat(amountToDeduct);
-
-        // Garante que a economia não fique abaixo de zero, se for uma regra de negócio.
-        // Remova ou ajuste esta linha se a economia pode ser negativa.
         const finalEconomy = Math.max(0, newEconomy);
 
-        // O benefits_activated não é diretamente impactado pela remoção de uma trilha aqui,
-        // a menos que você tenha uma regra específica para isso (ex: trilhas contam como "ativadas"
-        // e são decrementedadas ao remover). Se não, não o atualize aqui.
-        // No entanto, para ser simétrico com `unlockUserReward` se ele incrementa,
-        // você pode querer decrementar. Para este exemplo, vou manter o `benefits_activated`
-        // sem alteração aqui, assumindo que ele só se refere a 'redeemedBenefits'.
-        // Se a trilha também ativava um "benefício", você precisaria carregar `benefits_activated`
-        // e decrementá-lo de forma similar a `totalEconomy`.
-
         await conn.execute(
-            `UPDATE usuarios SET totalEconomy = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`, // Coluna camelCase do seu DB
+            `UPDATE usuarios SET totalEconomy = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;`,
             [finalEconomy, userId]
         );
         return true;
@@ -336,11 +357,12 @@ async function deductUserEconomy(userId, amountToDeduct, connection = null) {
         console.error(`[USER REPOSITORY] Error deducting economy for user ${userId}:`, error.message);
         throw error;
     } finally {
-        if (!connection && conn) { // Só libera se a conexão foi obtida NESTA função
+        if (!connection && conn) {
             conn.release();
         }
     }
 }
+
 module.exports = {
     upsertUser,
     getTotalUsersCount,
@@ -354,4 +376,3 @@ module.exports = {
     unlockUserReward,
     deductUserEconomy,
 };
-// corr

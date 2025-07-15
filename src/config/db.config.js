@@ -2,12 +2,10 @@
 const mysql = require('mysql2/promise');
 
 let pool;
-const DB_NAME = process.env.DB_DATABASE; // Ensure this matches your .env key
+const DB_NAME = process.env.DB_DATABASE;
 
 async function connectToDatabase() {
     try {
-        // First, connect to MySQL server WITHOUT specifying a database.
-        // This is necessary to be able to create the database if it doesn't exist.
         const tempPool = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
@@ -22,32 +20,29 @@ async function connectToDatabase() {
             connection = await tempPool.getConnection();
             console.log('[BACKEND] Conectado ao servidor MySQL com sucesso!');
 
-            // Try to create the database if it doesn't exist
             await connection.execute(`CREATE DATABASE IF NOT EXISTS ${DB_NAME};`);
             console.log(`[BACKEND] Banco de dados "${DB_NAME}" verificado/criado com sucesso.`);
 
         } catch (error) {
             console.error('[BACKEND] Erro ao verificar/criar banco de dados:', error.message);
-            throw error; // Propagate the error if DB creation fails
+            throw error;
         } finally {
             if (connection) {
                 connection.release();
             }
-            await tempPool.end(); // Close the temporary pool
+            await tempPool.end();
         }
 
-        // Now, establish the main application pool, connecting TO the specific database
         pool = mysql.createPool({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
-            database: DB_NAME, // Connect to the specific database
+            database: DB_NAME,
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0
         });
 
-        // Test the connection to the specific database
         const finalConnection = await pool.getConnection();
         console.log(`[BACKEND] Conectado ao banco de dados "${DB_NAME}" para operações.`);
         finalConnection.release();
@@ -63,7 +58,7 @@ async function connectToDatabase() {
 
 async function createUsersTable() {
     const createTableQuery = `
-        CREATE TABLE IF NOT EXISTS usuarios (
+        CREATE TABLE IF NOT EXISTS usuarios ( -- Mantido 'usuarios'
             id INT AUTO_INCREMENT PRIMARY KEY,
             github_id VARCHAR(255) UNIQUE NOT NULL,
             github_login VARCHAR(255) NOT NULL,
@@ -76,10 +71,10 @@ async function createUsersTable() {
             course VARCHAR(100),
             currentSemester INT,
             totalSemesters INT,
-            areasOfInterest JSON,
+            areasOfInterest JSON, -- Adicionado o tipo JSON
             totalEconomy DECIMAL(10, 2) DEFAULT 0.00,
             redeemedBenefits JSON,
-            onboarding_complete BOOLEAN DEFAULT FALSE, -- <--- CAMPO ADICIONADO AQUI
+            onboarding_complete BOOLEAN DEFAULT FALSE, -- Adicionado com valor padrão FALSE
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         );
@@ -93,16 +88,15 @@ async function createUsersTable() {
     }
 }
 
-// NOVO: Função para criar a tabela de trilhas
 async function createTracksTable() {
     const createTableQuery = `
         CREATE TABLE IF NOT EXISTS tracks (
-            id VARCHAR(255) PRIMARY KEY, -- Usar um ID de string para facilitar a correspondência com o frontend
+            id VARCHAR(255) PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
             description TEXT NOT NULL,
-            icon_name VARCHAR(100), -- Nome do ícone para o frontend (ex: 'github', 'arrow-right')
-            path VARCHAR(255) NOT NULL, -- Caminho da rota no frontend
-            reward_value DECIMAL(10, 2) NOT NULL, -- Valor monetário da recompensa
+            icon_name VARCHAR(100),
+            path VARCHAR(255) NOT NULL,
+            reward_value DECIMAL(10, 2) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         );
@@ -116,7 +110,6 @@ async function createTracksTable() {
     }
 }
 
-// NOVO: Função para criar a tabela de progresso do usuário nas trilhas
 async function createUserTracksTable() {
     const createTableQuery = `
         CREATE TABLE IF NOT EXISTS user_tracks (
@@ -128,9 +121,9 @@ async function createUserTracksTable() {
             completed_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE, -- Mantido 'usuarios'
             FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE,
-            UNIQUE (user_id, track_id) -- Garante que um usuário só tenha uma entrada por trilha
+            UNIQUE (user_id, track_id)
         );
     `;
     try {
@@ -141,15 +134,15 @@ async function createUserTracksTable() {
         process.exit(1);
     }
 }
-// NOVO: Função para criar a tabela de estatísticas globais
+
 async function createGlobalStatsTable() {
     const createTableQuery = `
         CREATE TABLE IF NOT EXISTS global_stats (
-            id INT PRIMARY KEY DEFAULT 1, -- Usamos 'id' fixo para ter sempre uma única linha de stats
-            total_users BIGINT DEFAULT 0,
+            id INT PRIMARY KEY DEFAULT 1,
+            total_usuarios BIGINT DEFAULT 0, -- Mantido 'total_usuarios'
             total_unlocked_value DECIMAL(15, 2) DEFAULT 0.00,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            CONSTRAINT id_check CHECK (id = 1) -- Garante que apenas o id 1 pode ser inserido
+            CONSTRAINT id_check CHECK (id = 1)
         );
     `;
     const insertInitialRowQuery = `
@@ -170,7 +163,7 @@ module.exports = {
     createUsersTable,
     createTracksTable,
     createUserTracksTable,
-     createGlobalStatsTable,
+    createGlobalStatsTable,
     getPool: () => pool
 };
-// corre
+// correro
