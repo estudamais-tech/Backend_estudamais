@@ -1,29 +1,21 @@
-// src/services/stats.service.js
-const statsRepository = require('../repositories/stats.repository'); // <-- CORRIGIDO: Importa stats.repository
+const statsRepository = require('../repositories/stats.repository');
+const userRepository = require('../repositories/user.repository');
 
 async function getStats() {
-    return await statsRepository.getStats(); // Chama getStats do statsRepository
-}
-
-async function incrementUserCount() { // <-- FUNÇÃO REINTRODUZIDA
-    try {
-        console.log('[STATS SERVICE] Incrementando contador global de usuários.');
-        await statsRepository.incrementUserCount(); // <-- Chama o método no statsRepository
-    } catch (error) {
-        console.error('[STATS SERVICE] Erro ao incrementar contador de usuários:', error.message);
-        // Não re-lançar para não travar o fluxo de upsert do usuário
-    }
-}
-
-async function incrementUnlockedValue(amount) {
-    if (amount > 0) {
-        console.log(`[STATS SERVICE] Incrementando valor global desbloqueado em: ${amount}`);
-        await statsRepository.incrementStats({ value_to_add: amount });
-    }
+    const globalStats = await statsRepository.getGlobalStats();
+    
+    return {
+        total_usuarios: globalStats.total_usuarios,
+        total_beneficios_ativos: globalStats.total_beneficios_ativos,
+        total_unlocked_value: globalStats.total_unlocked_value,
+        total_economia_geral: globalStats.total_economia_geral,
+        total_trilhas_iniciadas: globalStats.total_trilhas_iniciadas,
+        total_trilhas_concluidas: globalStats.total_trilhas_concluidas,
+        updated_at: globalStats.updated_at
+    };
 }
 
 module.exports = {
     getStats,
-    incrementUserCount, // <-- EXPORTADO NOVAMENTE
-    incrementUnlockedValue,
+    incrementUnlockedValue: statsRepository.incrementUnlockedValue
 };

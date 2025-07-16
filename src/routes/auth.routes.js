@@ -1,3 +1,4 @@
+// src/routes/auth.routes.js
 const express = require('express');
 const authController = require('../controllers/auth.controller');
 const router = express.Router();
@@ -7,4 +8,3 @@ router.post('/logout', authController.logout);
 router.get('/check-auth', authController.checkAuth);
 
 module.exports = router;
-// correto

@@ -1,72 +1,91 @@
+// src/repositories/stats.repository.js
 const { getPool } = require('../config/db.config');
 
-async function getStats() { // Nome da função consistente com o service
+async function getGlobalStats() {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
+    if (!pool) throw new Error('Database connection not established');
+
     try {
-        // Busca o total_unlocked_value da tabela global_stats
-        const [globalStatsRows] = await pool.execute('SELECT total_unlocked_value FROM global_stats WHERE id = 1;');
-        let total_unlocked_value = '0.00';
-        if (globalStatsRows.length > 0) {
-            total_unlocked_value = globalStatsRows[0].total_unlocked_value;
-        } else {
-            // Se a linha global_stats não existir, insere ela com valores padrão
-            await pool.execute('INSERT IGNORE INTO global_stats (id, total_usuarios, total_unlocked_value) VALUES (1, 0, 0.00);');
+        await pool.execute('INSERT IGNORE INTO global_stats (id) VALUES (1)');
+
+        const [stats] = await pool.execute(`
+            SELECT 
+                g.total_unlocked_value,
+                g.updated_at,
+                (SELECT COUNT(*) FROM usuarios) AS total_usuarios,
+                (SELECT COUNT(*) FROM usuarios WHERE benefits_activated > 0) AS total_beneficios_ativos,
+                (SELECT IFNULL(SUM(totalEconomy), 0) FROM usuarios) AS total_economia_geral,
+                (SELECT COUNT(*) FROM user_tracks WHERE status = 'in-progress') AS total_trilhas_iniciadas,
+                (SELECT COUNT(*) FROM user_tracks WHERE status = 'completed') AS total_trilhas_concluidas
+            FROM global_stats g
+            WHERE g.id = 1
+        `);
+
+        return {
+            total_usuarios: stats[0].total_usuarios,
+            total_unlocked_value: stats[0].total_unlocked_value || '0.00',
+            total_beneficios_ativos: stats[0].total_beneficios_ativos,
+            total_economia_geral: stats[0].total_economia_geral || '0.00',
+            total_trilhas_iniciadas: stats[0].total_trilhas_iniciadas,
+            total_trilhas_concluidas: stats[0].total_trilhas_concluidas,
+            updated_at: stats[0].updated_at
+        };
+    } catch (error) {
+        console.error('Error getting stats:', error.message);
+        throw error;
+    }
+}
+
+async function incrementUnlockedValue(amount) {
+    const pool = getPool();
+    if (!pool) throw new Error('Database connection not established');
+
+    try {
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            await connection.execute(
+                `INSERT INTO global_stats (id, total_unlocked_value) 
+                 VALUES (1, ?) 
+                 ON DUPLICATE KEY UPDATE 
+                 total_unlocked_value = total_unlocked_value + ?,
+                 updated_at = CURRENT_TIMESTAMP`,
+                [amount, amount]
+            );
+
+            await connection.commit();
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
         }
-
-        // BUSCA A CONTAGEM REAL DE USUÁRIOS DA TABELA 'usuarios' (fonte de verdade)
-        const [userCountRows] = await pool.execute('SELECT COUNT(*) AS count FROM usuarios;');
-        const total_usuarios = userCountRows[0].count;
-
-        return { total_usuarios, total_unlocked_value };
     } catch (error) {
-        console.error('[STATS REPOSITORY] Erro ao buscar estatísticas globais:', error.message);
+        console.error('Error incrementing value:', error.message);
         throw error;
     }
 }
 
-async function incrementUserCount() { // Esta função ainda pode ser usada para outros propósitos ou removida se a contagem for sempre dinâmica
+async function incrementUserCount() {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
-    try {
-        // Incrementa 'total_usuarios' na tabela 'global_stats'
-        await pool.execute(
-            `INSERT INTO global_stats (id, total_usuarios) VALUES (1, 1)
-             ON DUPLICATE KEY UPDATE total_usuarios = total_usuarios + 1, updated_at = CURRENT_TIMESTAMP;`
-        );
-    } catch (error) {
-        console.error('[STATS REPOSITORY] Erro ao incrementar contador de usuários:', error.message);
-        throw error;
-    }
-}
+    if (!pool) throw new Error('Database connection not established');
 
-async function incrementStats({ users_to_add = 0, value_to_add = 0 }) {
-    const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
     try {
-        // Esta função é mais genérica para incrementar ambos, usuários e valor
         await pool.execute(
-            `INSERT INTO global_stats (id, total_usuarios, total_unlocked_value) VALUES (1, ?, ?)
-             ON DUPLICATE KEY UPDATE
-             total_usuarios = total_usuarios + ?,
-             total_unlocked_value = total_unlocked_value + ?,
-             updated_at = CURRENT_TIMESTAMP;`,
-            [users_to_add, value_to_add, users_to_add, value_to_add]
+            `UPDATE global_stats SET 
+             total_usuarios = total_usuarios + 1,
+             updated_at = CURRENT_TIMESTAMP
+             WHERE id = 1`
         );
     } catch (error) {
-        console.error('[STATS REPOSITORY] Erro ao incrementar estatísticas:', error.message);
+        console.error('Error incrementing user count:', error.message);
         throw error;
     }
 }
 
 module.exports = {
-    getStats,
-    incrementUserCount,
-    incrementStats,
+    getGlobalStats,
+    incrementUnlockedValue,
+    incrementUserCount
 };

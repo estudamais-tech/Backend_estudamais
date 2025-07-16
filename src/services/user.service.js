@@ -1,79 +1,60 @@
-// src/services/user.service.js
 const userRepository = require('../repositories/user.repository');
 
-
-async function processGitHubUser(githubUser) {
-    const result = await userRepository.upsertUser(githubUser);
-    return result;
-}
-
 async function getUsersCount() {
-    const count = await userRepository.getTotalUsersCount();
-    return count;
+    return await userRepository.getTotalUsersCount();
 }
 
-// Serviço para contagem de usuários com GitHub
 async function getGithubUsersCount() {
-    const count = await userRepository.getGithubUsersCount();
-    return count;
+    return await userRepository.getGithubUsersCount();
 }
 
-// Serviço para contagem de estudantes com benefícios ativos
 async function getStudentsWithActiveBenefitsCount() {
-    const count = await userRepository.getStudentsWithActiveBenefitsCount();
-    return count;
+    return await userRepository.getStudentsWithActiveBenefitsCount();
 }
 
-// Serviço para contagem de estudantes com status pendente no GitHub
 async function getPendingStudentsCount() {
-    const count = await userRepository.getPendingStudentsCount();
-    return count;
+    return await userRepository.getPendingStudentsCount();
 }
 
-// Serviço para obter a lista completa de estudantes
 async function getAllStudents() {
-    const students = await userRepository.getAllStudents();
-    return students;
+    return await userRepository.getAllStudents();
 }
 
-// NOVO: Serviço para salvar os dados de onboarding do estudante
 async function saveOnboardingData(userId, data) {
-    // AJUSTE CRÍTICO AQUI: Chamar saveOnboardingData do repositório
     await userRepository.saveOnboardingData(userId, data);
 }
 
-// NOVO: Serviço para obter os dados da dashboard do estudante
 async function getStudentDashboardData(userId) {
-    const student = await userRepository.getStudentById(userId);
-    return student;
+    return await userRepository.getStudentById(userId);
 }
 
-// NOVO: Serviço para atualizar o status de um benefício e a economia total
 async function updateBenefitStatus(userId, productId, isRedeemed, monthlyValueUSD, monthsRemaining) {
-    await userRepository.updateStudentBenefitStatus(userId, productId, isRedeemed, monthlyValueUSD, monthsRemaining);
+    await userRepository.updateStudentBenefitStatus(
+        userId, 
+        productId, 
+        isRedeemed, 
+        monthlyValueUSD, 
+        monthsRemaining
+    );
 }
 
-// NOVO: Serviço para desbloquear uma recompensa
 async function unlockReward(userId, trackId, amount) {
-    try {
-        const result = await userRepository.unlockUserReward(userId, trackId, amount);
-        return result;
-    } catch (error) {
-        console.error(`[USER SERVICE] Error unlocking reward for user ${userId} on track ${trackId}:`, error.message);
-        throw error;
-    }
+    return await userRepository.unlockUserReward(userId, trackId, amount);
 }
 
+async function updateUserConfettiStatus(userId, status) {
+    await userRepository.updateHasSeenConfettiStatus(userId, status);
+}
 
 module.exports = {
-    processGitHubUser,
     getUsersCount,
     getGithubUsersCount,
     getStudentsWithActiveBenefitsCount,
     getPendingStudentsCount,
     getAllStudents,
-    saveOnboardingData, // EXPORTANDO O SERVIÇO COM O NOME CORRETO
+    saveOnboardingData,
     getStudentDashboardData,
     updateBenefitStatus,
-    unlockReward, 
+    unlockReward,
+    updateUserConfettiStatus,
 };

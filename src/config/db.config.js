@@ -1,4 +1,3 @@
-// src/config/db.config.js
 const mysql = require('mysql2/promise');
 
 let pool;
@@ -18,18 +17,9 @@ async function connectToDatabase() {
         let connection;
         try {
             connection = await tempPool.getConnection();
-            console.log('[BACKEND] Conectado ao servidor MySQL com sucesso!');
-
             await connection.execute(`CREATE DATABASE IF NOT EXISTS ${DB_NAME};`);
-            console.log(`[BACKEND] Banco de dados "${DB_NAME}" verificado/criado com sucesso.`);
-
-        } catch (error) {
-            console.error('[BACKEND] Erro ao verificar/criar banco de dados:', error.message);
-            throw error;
         } finally {
-            if (connection) {
-                connection.release();
-            }
+            if (connection) connection.release();
             await tempPool.end();
         }
 
@@ -44,21 +34,17 @@ async function connectToDatabase() {
         });
 
         const finalConnection = await pool.getConnection();
-        console.log(`[BACKEND] Conectado ao banco de dados "${DB_NAME}" para operações.`);
         finalConnection.release();
-        
         return pool;
-
     } catch (error) {
-        console.error('[BACKEND] Erro fatal ao conectar ou configurar o banco de dados MySQL:', error.message);
-        console.error('[BACKEND] Verifique se o MySQL está rodando e as credenciais no .env estão corretas.');
+        console.error('Error connecting to database:', error.message);
         process.exit(1);
     }
 }
 
 async function createUsersTable() {
     const createTableQuery = `
-        CREATE TABLE IF NOT EXISTS usuarios ( -- Mantido 'usuarios'
+        CREATE TABLE IF NOT EXISTS usuarios (
             id INT AUTO_INCREMENT PRIMARY KEY,
             github_id VARCHAR(255) UNIQUE NOT NULL,
             github_login VARCHAR(255) NOT NULL,
@@ -71,19 +57,22 @@ async function createUsersTable() {
             course VARCHAR(100),
             currentSemester INT,
             totalSemesters INT,
-            areasOfInterest JSON, -- Adicionado o tipo JSON
+            areasOfInterest JSON,
             totalEconomy DECIMAL(10, 2) DEFAULT 0.00,
             redeemedBenefits JSON,
-            onboarding_complete BOOLEAN DEFAULT FALSE, -- Adicionado com valor padrão FALSE
+            onboarding_complete BOOLEAN DEFAULT FALSE,
+            has_seen_confetti BOOLEAN DEFAULT FALSE, -- Nova coluna para o confete
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            points INT DEFAULT 0,
+            level INT DEFAULT 1,
+            last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     `;
     try {
         await pool.execute(createTableQuery);
-        console.log('[BACKEND] Tabela "usuarios" verificada/criada com sucesso (com colunas atualizadas).');
     } catch (error) {
-        console.error('[BACKEND] Erro ao criar tabela "usuarios":', error.message);
+        console.error('Error creating users table:', error.message);
         process.exit(1);
     }
 }
@@ -98,14 +87,15 @@ async function createTracksTable() {
             path VARCHAR(255) NOT NULL,
             reward_value DECIMAL(10, 2) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            difficulty ENUM('beginner', 'intermediate', 'advanced') DEFAULT 'beginner',
+            points_reward INT DEFAULT 100
         );
     `;
     try {
         await pool.execute(createTableQuery);
-        console.log('[BACKEND] Tabela "tracks" verificada/criada com sucesso.');
     } catch (error) {
-        console.error('[BACKEND] Erro ao criar tabela "tracks":', error.message);
+        console.error('Error creating tracks table:', error.message);
         process.exit(1);
     }
 }
@@ -121,16 +111,15 @@ async function createUserTracksTable() {
             completed_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE, -- Mantido 'usuarios'
+            FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE,
             FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE CASCADE,
             UNIQUE (user_id, track_id)
         );
     `;
     try {
         await pool.execute(createTableQuery);
-        console.log('[BACKEND] Tabela "user_tracks" verificada/criada com sucesso.');
     } catch (error) {
-        console.error('[BACKEND] Erro ao criar tabela "user_tracks":', error.message);
+        console.error('Error creating user_tracks table:', error.message);
         process.exit(1);
     }
 }
@@ -139,21 +128,19 @@ async function createGlobalStatsTable() {
     const createTableQuery = `
         CREATE TABLE IF NOT EXISTS global_stats (
             id INT PRIMARY KEY DEFAULT 1,
-            total_usuarios BIGINT DEFAULT 0, -- Mantido 'total_usuarios'
+            total_usuarios BIGINT DEFAULT 0,
             total_unlocked_value DECIMAL(15, 2) DEFAULT 0.00,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             CONSTRAINT id_check CHECK (id = 1)
         );
     `;
-    const insertInitialRowQuery = `
-        INSERT IGNORE INTO global_stats (id) VALUES (1);
-    `;
+    const insertInitialRowQuery = `INSERT IGNORE INTO global_stats (id) VALUES (1);`;
+    
     try {
         await pool.execute(createTableQuery);
-        await pool.execute(insertInitialRowQuery); 
-        console.log('[BACKEND] Tabela "global_stats" verificada/criada com sucesso.');
+        await pool.execute(insertInitialRowQuery);
     } catch (error) {
-        console.error('[BACKEND] Erro ao criar tabela "global_stats":', error.message);
+        console.error('Error creating global_stats table:', error.message);
         process.exit(1);
     }
 }
@@ -166,4 +153,3 @@ module.exports = {
     createGlobalStatsTable,
     getPool: () => pool
 };
-// correro

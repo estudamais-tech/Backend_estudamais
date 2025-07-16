@@ -1,11 +1,11 @@
 // src/config/jwt.config.js
-require('dotenv').config(); // Garante que as variáveis de ambiente são carregadas para este arquivo também
+require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-    console.error('[JWT_CONFIG] Erro: JWT_SECRET não está definido em process.env. O token JWT não poderá ser assinado/verificado corretamente.');
-    // Considere adicionar um throw new Error() aqui para falhar o startup se o segredo for crítico
+    console.error('JWT_SECRET not defined in environment variables');
+    process.exit(1);
 }
 
 module.exports = {

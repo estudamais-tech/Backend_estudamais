@@ -1,10 +1,9 @@
+// src/repositories/track.repository.js
 const { getPool } = require('../config/db.config');
 
 async function getTracksForUser(userId) {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
+    if (!pool) throw new Error('Database connection not established');
 
     try {
         const [rows] = await pool.execute(`
@@ -25,30 +24,26 @@ async function getTracksForUser(userId) {
             ORDER BY t.created_at;
         `, [userId]);
 
-        const formattedRows = rows.map(row => ({
+        return rows.map(row => ({
             id: row.id,
             title: row.title,
             description: row.description,
             icon_name: row.icon_name,
             path: row.path,
-            reward_value: parseFloat(row.reward_value), // Garante que é número
+            reward_value: parseFloat(row.reward_value),
             status: row.status,
             started_at: row.startedAt,
             completed_at: row.completedAt
         }));
-
-        return formattedRows;
     } catch (error) {
-        console.error(`[TRACK REPOSITORY] Error fetching tracks for user ${userId}:`, error.message);
+        console.error('Error getting tracks:', error.message);
         throw error;
     }
 }
 
 async function startUserTrack(userId, trackId) {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
+    if (!pool) throw new Error('Database connection not established');
 
     try {
         const [result] = await pool.execute(
@@ -60,16 +55,14 @@ async function startUserTrack(userId, trackId) {
         );
         return result;
     } catch (error) {
-        console.error(`[TRACK REPOSITORY] Error starting track ${trackId} for user ${userId}:`, error.message);
+        console.error('Error starting track:', error.message);
         throw error;
     }
 }
 
 async function completeUserTrack(userId, trackId) {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
+    if (!pool) throw new Error('Database connection not established');
 
     try {
         const [result] = await pool.execute(
@@ -80,21 +73,18 @@ async function completeUserTrack(userId, trackId) {
         );
         return result.affectedRows > 0;
     } catch (error) {
-        console.error(`[TRACK REPOSITORY] Error completing track ${trackId} for user ${userId}:`, error.message);
+        console.error('Error completing track:', error.message);
         throw error;
     }
 }
 
 async function addUserTrack(userId, trackId) {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
+    if (!pool) throw new Error('Database connection not established');
+
     try {
         const [trackExists] = await pool.execute('SELECT id FROM tracks WHERE id = ?;', [trackId]);
-        if (trackExists.length === 0) {
-            throw new Error('Track not found.');
-        }
+        if (trackExists.length === 0) throw new Error('Track not found');
 
         const [result] = await pool.execute(
             `INSERT INTO user_tracks (user_id, track_id, status, started_at)
@@ -105,19 +95,15 @@ async function addUserTrack(userId, trackId) {
         );
         return result;
     } catch (error) {
-        if (error.code === 'ER_DUP_ENTRY') {
-            return { message: 'Track already added or in progress for this user.' };
-        }
-        console.error(`[TRACK REPOSITORY] Error adding track ${trackId} for user ${userId}:`, error.message);
+        console.error('Error adding track:', error.message);
         throw error;
     }
 }
 
 async function removeUserTrack(userId, trackId) {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
+    if (!pool) throw new Error('Database connection not established');
+
     try {
         const [result] = await pool.execute(
             `DELETE FROM user_tracks WHERE user_id = ? AND track_id = ?;`,
@@ -125,16 +111,15 @@ async function removeUserTrack(userId, trackId) {
         );
         return result.affectedRows > 0;
     } catch (error) {
-        console.error(`[TRACK REPOSITORY] Error removing track ${trackId} for user ${userId}:`, error.message);
+        console.error('Error removing track:', error.message);
         throw error;
     }
 }
 
 async function insertTrack(track) {
     const pool = getPool();
-    if (!pool) {
-        throw new Error('Database connection not established.');
-    }
+    if (!pool) throw new Error('Database connection not established');
+
     const { id, title, description, icon_name, path, reward_value } = track;
     try {
         const [result] = await pool.execute(
@@ -144,17 +129,16 @@ async function insertTrack(track) {
         );
         return result;
     } catch (error) {
-        console.error(`[TRACK REPOSITORY] Error inserting track ${title}:`, error.message);
+        console.error('Error inserting track:', error.message);
         throw error;
     }
 }
 
 module.exports = {
     getTracksForUser,
-    startUserTrack, // Manter se você tiver uma rota ou uso específico para isso
+    startUserTrack,
     completeUserTrack,
     addUserTrack,
     removeUserTrack,
     insertTrack,
 };
-// fgg
