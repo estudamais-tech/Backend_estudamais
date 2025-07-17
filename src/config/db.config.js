@@ -130,6 +130,7 @@ async function createGlobalStatsTable() {
             id INT PRIMARY KEY DEFAULT 1,
             total_usuarios BIGINT DEFAULT 0,
             total_unlocked_value DECIMAL(15, 2) DEFAULT 0.00,
+            total_trilhas_concluidas BIGINT DEFAULT 0, -- Adicionado para trilhas concluídas
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             CONSTRAINT id_check CHECK (id = 1)
         );

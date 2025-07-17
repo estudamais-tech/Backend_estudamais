@@ -1,4 +1,3 @@
-// src/repositories/stats.repository.js
 const { getPool } = require('../config/db.config');
 
 async function getGlobalStats() {
@@ -6,17 +5,18 @@ async function getGlobalStats() {
     if (!pool) throw new Error('Database connection not established');
 
     try {
+        // Ensure the initial row exists
         await pool.execute('INSERT IGNORE INTO global_stats (id) VALUES (1)');
 
         const [stats] = await pool.execute(`
             SELECT 
                 g.total_unlocked_value,
+                g.total_trilhas_concluidas, -- Incluído no SELECT
                 g.updated_at,
                 (SELECT COUNT(*) FROM usuarios) AS total_usuarios,
                 (SELECT COUNT(*) FROM usuarios WHERE benefits_activated > 0) AS total_beneficios_ativos,
                 (SELECT IFNULL(SUM(totalEconomy), 0) FROM usuarios) AS total_economia_geral,
-                (SELECT COUNT(*) FROM user_tracks WHERE status = 'in-progress') AS total_trilhas_iniciadas,
-                (SELECT COUNT(*) FROM user_tracks WHERE status = 'completed') AS total_trilhas_concluidas
+                (SELECT COUNT(*) FROM user_tracks WHERE status = 'in-progress') AS total_trilhas_iniciadas
             FROM global_stats g
             WHERE g.id = 1
         `);
@@ -27,7 +27,7 @@ async function getGlobalStats() {
             total_beneficios_ativos: stats[0].total_beneficios_ativos,
             total_economia_geral: stats[0].total_economia_geral || '0.00',
             total_trilhas_iniciadas: stats[0].total_trilhas_iniciadas,
-            total_trilhas_concluidas: stats[0].total_trilhas_concluidas,
+            total_trilhas_concluidas: stats[0].total_trilhas_concluidas, // Retornado
             updated_at: stats[0].updated_at
         };
     } catch (error) {
@@ -84,8 +84,27 @@ async function incrementUserCount() {
     }
 }
 
+async function incrementCompletedTracksCount() {
+    const pool = getPool();
+    if (!pool) throw new Error('Database connection not established');
+
+    try {
+        await pool.execute(
+            `UPDATE global_stats SET 
+             total_trilhas_concluidas = total_trilhas_concluidas + 1,
+             updated_at = CURRENT_TIMESTAMP
+             WHERE id = 1`
+        );
+    } catch (error) {
+        console.error('Error incrementing completed tracks count:', error.message);
+        throw error;
+    }
+}
+
+
 module.exports = {
     getGlobalStats,
     incrementUnlockedValue,
-    incrementUserCount
+    incrementUserCount,
+    incrementCompletedTracksCount // Exportar a nova função
 };

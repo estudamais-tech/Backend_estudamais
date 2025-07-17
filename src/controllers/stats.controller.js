@@ -1,4 +1,3 @@
-// src/controllers/stats.controller.js
 const statsService = require('../services/stats.service');
 
 async function getGlobalStatsController(req, res) {

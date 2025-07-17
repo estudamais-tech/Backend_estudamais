@@ -17,5 +17,6 @@ async function getStats() {
 
 module.exports = {
     getStats,
-    incrementUnlockedValue: statsRepository.incrementUnlockedValue
+    incrementUnlockedValue: statsRepository.incrementUnlockedValue,
+    incrementCompletedTracksCount: statsRepository.incrementCompletedTracksCount // Expor a nova função
 };

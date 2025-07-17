@@ -46,6 +46,33 @@ async function updateUserConfettiStatus(userId, status) {
     await userRepository.updateHasSeenConfettiStatus(userId, status);
 }
 
+// NOVA FUNÇÃO: Obter ranking de usuários
+async function getUsersRanking() {
+    // Busca todos os estudantes
+    const allStudents = await userRepository.getAllStudents();
+
+    // Filtra e prepara os dados para o ranking
+    const ranking = allStudents
+        .map(student => ({
+            id: student.id,
+            name: student.name || student.github_login, // Usa o nome ou login do GitHub
+            avatar_url: student.avatar_url,
+            points: student.points || 0, // Garante que pontos seja um número
+            level: student.level || 1,   // Garante que level seja um número
+            totalEconomy: parseFloat(student.totalEconomy || 0), // Converte para número
+        }))
+        // Ordena pelo totalEconomy (maior para o menor) e depois por pontos (maior para o menor)
+        .sort((a, b) => {
+            if (b.totalEconomy !== a.totalEconomy) {
+                return b.totalEconomy - a.totalEconomy;
+            }
+            return b.points - a.points;
+        });
+
+    return ranking;
+}
+
+
 module.exports = {
     getUsersCount,
     getGithubUsersCount,
@@ -57,4 +84,5 @@ module.exports = {
     updateBenefitStatus,
     unlockReward,
     updateUserConfettiStatus,
+    getUsersRanking, // Exportar a nova função
 };

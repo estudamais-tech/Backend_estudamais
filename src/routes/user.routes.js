@@ -16,4 +16,7 @@ router.get('/student/dashboard', authenticateToken, userController.getStudentDas
 router.put('/student/benefits/:productId', authenticateToken, userController.updateBenefitStatusController);
 router.put('/users/:userId/confetti-seen', /* authenticateToken, */ userController.markConfettiAsSeenController);
 
+// NOVA ROTA: Ranking de usuários
+router.get('/users/ranking', userController.getUsersRankingController);
+
 module.exports = router;

@@ -41,12 +41,12 @@ async function getTracksForUser(userId) {
     }
 }
 
-async function startUserTrack(userId, trackId) {
-    const pool = getPool();
-    if (!pool) throw new Error('Database connection not established');
+async function startUserTrack(userId, trackId, connection = null) { // Adicionado connection como parâmetro opcional
+    const conn = connection || getPool();
+    if (!conn) throw new Error('Database connection not established');
 
     try {
-        const [result] = await pool.execute(
+        const [result] = await conn.execute(
             `INSERT INTO user_tracks (user_id, track_id, status, started_at)
              VALUES (?, ?, 'in-progress', CURRENT_TIMESTAMP)
              ON DUPLICATE KEY UPDATE
@@ -57,15 +57,17 @@ async function startUserTrack(userId, trackId) {
     } catch (error) {
         console.error('Error starting track:', error.message);
         throw error;
+    } finally {
+        if (!connection && conn.release) conn.release(); // Libera a conexão apenas se ela foi criada nesta função
     }
 }
 
-async function completeUserTrack(userId, trackId) {
-    const pool = getPool();
-    if (!pool) throw new Error('Database connection not established');
+async function completeUserTrack(userId, trackId, connection = null) { // Adicionado connection como parâmetro opcional
+    const conn = connection || getPool();
+    if (!conn) throw new Error('Database connection not established');
 
     try {
-        const [result] = await pool.execute(
+        const [result] = await conn.execute(
             `UPDATE user_tracks
              SET status = 'completed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
              WHERE user_id = ? AND track_id = ? AND status = 'in-progress';`,
@@ -75,18 +77,20 @@ async function completeUserTrack(userId, trackId) {
     } catch (error) {
         console.error('Error completing track:', error.message);
         throw error;
+    } finally {
+        if (!connection && conn.release) conn.release(); // Libera a conexão apenas se ela foi criada nesta função
     }
 }
 
-async function addUserTrack(userId, trackId) {
-    const pool = getPool();
-    if (!pool) throw new Error('Database connection not established');
+async function addUserTrack(userId, trackId, connection = null) { // Adicionado connection como parâmetro opcional
+    const conn = connection || getPool();
+    if (!conn) throw new Error('Database connection not established');
 
     try {
-        const [trackExists] = await pool.execute('SELECT id FROM tracks WHERE id = ?;', [trackId]);
+        const [trackExists] = await conn.execute('SELECT id FROM tracks WHERE id = ?;', [trackId]);
         if (trackExists.length === 0) throw new Error('Track not found');
 
-        const [result] = await pool.execute(
+        const [result] = await conn.execute(
             `INSERT INTO user_tracks (user_id, track_id, status, started_at)
              VALUES (?, ?, 'in-progress', CURRENT_TIMESTAMP)
              ON DUPLICATE KEY UPDATE
@@ -97,15 +101,17 @@ async function addUserTrack(userId, trackId) {
     } catch (error) {
         console.error('Error adding track:', error.message);
         throw error;
+    } finally {
+        if (!connection && conn.release) conn.release(); // Libera a conexão apenas se ela foi criada nesta função
     }
 }
 
-async function removeUserTrack(userId, trackId) {
-    const pool = getPool();
-    if (!pool) throw new Error('Database connection not established');
+async function removeUserTrack(userId, trackId, connection = null) { // Adicionado connection como parâmetro opcional
+    const conn = connection || getPool();
+    if (!conn) throw new Error('Database connection not established');
 
     try {
-        const [result] = await pool.execute(
+        const [result] = await conn.execute(
             `DELETE FROM user_tracks WHERE user_id = ? AND track_id = ?;`,
             [userId, trackId]
         );
@@ -113,6 +119,8 @@ async function removeUserTrack(userId, trackId) {
     } catch (error) {
         console.error('Error removing track:', error.message);
         throw error;
+    } finally {
+        if (!connection && conn.release) conn.release(); // Libera a conexão apenas se ela foi criada nesta função
     }
 }
 
@@ -134,6 +142,38 @@ async function insertTrack(track) {
     }
 }
 
+// NOVA FUNÇÃO: Obter atividades recentes globais do banco de dados
+async function getGlobalRecentActivitiesFromDb() {
+    const pool = getPool();
+    if (!pool) throw new Error('Database connection not established');
+
+    try {
+        const [rows] = await pool.execute(
+            `SELECT 
+                ut.id AS activity_id,
+                ut.user_id,
+                u.name AS user_name,
+                u.github_login AS user_github_login,
+                u.avatar_url AS user_avatar_url,
+                t.title AS track_title,
+                t.reward_value,
+                ut.started_at,
+                ut.completed_at,
+                ut.status AS activity_status,
+                ut.updated_at
+            FROM user_tracks ut
+            JOIN usuarios u ON ut.user_id = u.id
+            JOIN tracks t ON ut.track_id = t.id
+            ORDER BY ut.updated_at DESC
+            LIMIT 20;` // Limita a 20 atividades mais recentes para performance
+        );
+        return rows;
+    } catch (error) {
+        console.error('Error getting global recent activities:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     getTracksForUser,
     startUserTrack,
@@ -141,4 +181,5 @@ module.exports = {
     addUserTrack,
     removeUserTrack,
     insertTrack,
+    getGlobalRecentActivitiesFromDb, // Exportar a nova função
 };

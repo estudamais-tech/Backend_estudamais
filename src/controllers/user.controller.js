@@ -125,6 +125,17 @@ async function markConfettiAsSeenController(req, res) {
     }
 }
 
+// NOVA FUNÇÃO: Obter ranking de usuários
+async function getUsersRankingController(req, res) {
+    try {
+        const ranking = await userService.getUsersRanking();
+        res.status(200).json(ranking);
+    } catch (error) {
+        console.error('Error getting users ranking:', error.message);
+        res.status(500).json({ message: 'Error getting users ranking' });
+    }
+}
+
 module.exports = {
     getUsersCountController,
     getGithubUsersCountController,
@@ -135,4 +146,5 @@ module.exports = {
     getStudentDashboardDataController,
     updateBenefitStatusController,
     markConfettiAsSeenController,
+    getUsersRankingController, // Exportar a nova função
 };

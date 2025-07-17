@@ -4,11 +4,18 @@ const trackController = require('../controllers/track.controller');
 const authenticateToken = require('../middlewares/auth.middleware');
 const router = express.Router();
 
+// NOVA ROTA: Obter atividades recentes globais (pública)
+// Esta rota é definida ANTES do middleware de autenticação para que seja acessível sem token.
+router.get('/tracks/global-activities', trackController.getGlobalRecentActivitiesController);
+
+// Aplica o middleware de autenticação para as rotas abaixo
 router.use(authenticateToken);
 
-router.get('/user/tracks', trackController.getTracks);
-router.post('/user/tracks', trackController.startTrackAndUnlockReward);
-router.delete('/user/tracks/:trackId', trackController.removeTrack);
-router.post('/user/tracks/complete', trackController.completeTrackAndUnlockReward);
+// Rotas protegidas por autenticação
+router.get('/user/tracks', trackController.getTracksController);
+router.post('/user/tracks', trackController.startTrackAndUnlockRewardController);
+router.post('/user/tracks/complete', trackController.completeTrackAndUnlockRewardController);
+router.delete('/user/tracks/:trackId', trackController.removeTrackController);
+
 
 module.exports = router;

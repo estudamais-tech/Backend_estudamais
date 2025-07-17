@@ -1,7 +1,7 @@
 // src/controllers/track.controller.js
 const trackService = require('../services/track.service');
 
-async function getTracks(req, res) {
+async function getTracksController(req, res) {
     const userId = req.user.id;
 
     if (!userId) {
@@ -17,7 +17,7 @@ async function getTracks(req, res) {
     }
 }
 
-async function startTrackAndUnlockReward(req, res) {
+async function startTrackAndUnlockRewardController(req, res) {
     const userId = req.user.id;
     const { trackId } = req.body;
     
@@ -30,7 +30,7 @@ async function startTrackAndUnlockReward(req, res) {
     }
 }
 
-async function completeTrackAndUnlockReward(req, res) {
+async function completeTrackAndUnlockRewardController(req, res) {
     const userId = req.user.id;
     const { trackId } = req.body;
 
@@ -43,7 +43,7 @@ async function completeTrackAndUnlockReward(req, res) {
     }
 }
 
-async function removeTrack(req, res) {
+async function removeTrackController(req, res) {
     const userId = req.user.id;
     const { trackId } = req.params;
 
@@ -56,9 +56,23 @@ async function removeTrack(req, res) {
     }
 }
 
+// FUNÇÃO CORRIGIDA: Obter atividades recentes globais
+async function getGlobalRecentActivitiesController(req, res) {
+    try {
+        // Certifique-se de que trackService.getGlobalRecentActivities está sendo chamado corretamente.
+        // Se o erro persistir, verifique a exportação em track.service.js novamente.
+        const activities = await trackService.getGlobalRecentActivities();
+        res.status(200).json(activities);
+    } catch (error) {
+        console.error('Error getting global recent activities:', error.message);
+        res.status(500).json({ message: 'Failed to get global recent activities' });
+    }
+}
+
 module.exports = {
-    getTracks,
-    startTrackAndUnlockReward,
-    completeTrackAndUnlockReward,
-    removeTrack,
+    getTracksController,
+    startTrackAndUnlockRewardController,
+    completeTrackAndUnlockRewardController,
+    removeTrackController,
+    getGlobalRecentActivitiesController,
 };

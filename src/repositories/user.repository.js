@@ -1,5 +1,7 @@
 const { getPool } = require('../config/db.config');
 
+const MAX_INVESTMENT_LIMIT = 3000.00; // Define o limite máximo de investimento em USD
+
 async function upsertUser(githubUser) {
     const pool = getPool();
     if (!pool) throw new Error('Database connection not established');
@@ -212,13 +214,19 @@ async function updateStudentBenefitStatus(userId, productId, isRedeemed, monthly
         const existingIndex = redeemedBenefits.findIndex(b => b.productId === productId);
 
         if (isRedeemed) {
+            const valueToAdd = monthlyValueUSD * monthsRemaining;
+            // Check if adding this benefit would exceed the limit
+            if (totalEconomy + valueToAdd > MAX_INVESTMENT_LIMIT) {
+                throw new Error(`Cannot add benefit. Total economy would exceed the limit of US$${MAX_INVESTMENT_LIMIT.toFixed(2)}.`);
+            }
+
             if (existingIndex === -1) {
                 redeemedBenefits.push({ productId, monthlyValueUSD, monthsRemaining });
-                totalEconomy += (monthlyValueUSD * monthsRemaining);
+                totalEconomy += valueToAdd;
             } else {
                 const existing = redeemedBenefits[existingIndex];
                 totalEconomy -= (existing.monthlyValueUSD * existing.monthsRemaining);
-                totalEconomy += (monthlyValueUSD * monthsRemaining);
+                totalEconomy += valueToAdd;
                 redeemedBenefits[existingIndex] = { productId, monthlyValueUSD, monthsRemaining };
             }
         } else if (existingIndex !== -1) {
@@ -263,7 +271,14 @@ async function unlockUserReward(userId, trackId, amount, connection = null) {
         let currentTotalEconomy = parseFloat(rows[0].totalEconomy || 0);
         let currentBenefitsActivated = parseInt(rows[0].benefits_activated || 0);
 
-        const newTotalEconomy = currentTotalEconomy + amount;
+        const potentialNewTotalEconomy = currentTotalEconomy + amount;
+
+        // Re-adding the crucial check for MAX_INVESTMENT_LIMIT
+        if (potentialNewTotalEconomy > MAX_INVESTMENT_LIMIT) {
+            throw new Error(`Cannot unlock reward. Total economy would exceed the limit of US$${MAX_INVESTMENT_LIMIT.toFixed(2)}.`);
+        }
+
+        const newTotalEconomy = potentialNewTotalEconomy; // Now assigned after the check
         const newBenefitsActivated = currentBenefitsActivated + 1;
 
         await conn.execute(
